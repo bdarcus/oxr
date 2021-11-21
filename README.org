@@ -13,4 +13,4 @@ Figure [[fig-insert-screen]] is a simple screenshot showing the group-based inse
 I started this before John Kitchin posted a similar, much more complete, example in the form of [[https://github.com/jkitchin/org-ref/blob/master/org-ref-refproc.el][refproc]].
 That, however, is currently included in the much larger org-ref package.
 
-I don't have a great need for this myself, but anyone interested in contributing should already have gone through the FSF copyright assignment process (which I am currently doing), just in case any of it might be useful in org itself.
+I don't have a great need for this myself, but anyone interested in contributing should already have gone through the FSF copyright assignment process, just in case any of it might be useful in org itself.
