@@ -49,8 +49,9 @@ grouping, and add the target type to the annotation instead."
 
 (defun oxr--insert-ref-internal ()
   "Insert cross-reference in buffer as internal link."
-  (let ((target (oxr-select-targets)))
-    (org-insert-link 'internal target)))
+  (let* ((target (oxr-select-targets))
+         (target-value (car target)))
+    (org-insert-link 'internal target-value)))
 
 (defun oxr--insert-ref-typed ()
   "Insert cross-reference in buffer as org-ref compatible typed link."
@@ -89,8 +90,10 @@ grouping, and add the target type to the annotation instead."
                        (group-function . ,(when oxr-group-ui #'oxr--insert-group))
                        (category . cross-reference))
                    (complete-with-action action targets string predicate))))
-            (error "No cross-reference targets"))))
-    (string-trim choice)))
+            (error "No cross-reference targets")))
+         ;; TDOO doesn't work; are the properties thrown out already?
+         (choice-type (get-text-property 0 'oxr--type choice)))
+    (cons (string-trim choice) choice-type)))
 
 (defun oxr--extract-string (thing)
   "Peel off 'car's from a nested list THING until the car is a string."
@@ -102,18 +105,21 @@ grouping, and add the target type to the annotation instead."
 (defun oxr-parse-targets (&optional _type)
   "Parse cross-reference targets from org buffer, optionally by TYPE."
   (let ((org-tree (org-element-parse-buffer)))
-    (org-element-map org-tree '(table link)
+    (org-element-map org-tree '(table link headline)
       (lambda (target)
         (let* ((el-type (org-element-type target))
                (target-type (pcase el-type
                               ('table "table")
+                              ('headline "section")
                               (_ "figure")))
                (parent (car (cdr (org-element-property :parent target))))
                (name (pcase el-type
                        ('table (org-element-property :name target))
+                       ('headline (concat "#" (org-element-property :CUSTOM_ID target)))
                        (_ (plist-get parent :name))))
                (caption (oxr--extract-string
                          (or (org-element-property :caption target)
+                             (org-element-property :raw-value target)
                              (plist-get parent :caption)
                              ""))))
           (when name (oxr--make-candidate name caption target-type)))))))
@@ -142,6 +148,20 @@ grouping, and add the target type to the annotation instead."
   (let ((image_file (read-file-name "Image file: " "~/Pictures/")))
     (insert (oxr-metadata-prompt (oxr-get-name-prefix 'figure)))
     (org-insert-link 'file image_file)))
+
+(defun oxr-insert-section ()
+  "Insert a new section headline, with name."
+  (interactive)
+  (let* ((name (read-from-minibuffer "Section: "))
+         (id (oxr--make-headline-id name)))
+    (insert (concat "* " name))
+    (org-entry-put nil "CUSTOM_ID" id)))
+
+(defun oxr--make-headline-id (str)
+  "Return a custom id token from STR."
+  (downcase
+   (string-join
+    (seq-take (split-string str "[:;,.\s]" 'omit-nulls) 5) "-")))
 
 (defun oxr-insert-name ()
   "Insert name for cross-referencing."
