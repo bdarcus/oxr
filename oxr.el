@@ -28,11 +28,13 @@ grouping, and add the target type to the annotation instead."
   :group 'oxr)
 
 ;; As this is just experimental, and I don't care about math, this currently
-;; only supports figures and tables.
+;; only supports figures, tables and sections.
 ;;
 ;; Should be easy enough to extend the list of types though.
 (defvar oxr-types '((figure . "fig")
-                    (table . "tab")))
+                    (table . "tab")
+                    (section . "sec")))
+
 (defvar oxr-create-table-function 'org-table-create)
 (defvar oxr-insert-ref-function 'oxr--insert-ref-internal)
 
