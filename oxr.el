@@ -44,6 +44,7 @@ grouping, and add the target type to the annotation instead."
 
 ;;; Cross-reference insert functions
 
+;;;###autoload
 (defun oxr-insert-ref ()
   "Insert cross-reference link in buffer."
   (interactive)
@@ -137,12 +138,14 @@ grouping, and add the target type to the annotation instead."
 
 ;;; Convenience functions for inserting new cross-reference targets (tables and figures)
 
+;;;###autoload
 (defun oxr-insert-table ()
   "Insert a new table, with name and caption."
   (interactive)
   (insert (oxr-metadata-prompt (oxr-get-name-prefix 'table)))
   (funcall oxr-create-table-function))
 
+;;;###autoload
 (defun oxr-insert-figure ()
   "Insert a new figure, with name and caption."
   (interactive)
@@ -151,6 +154,7 @@ grouping, and add the target type to the annotation instead."
     (insert (oxr-metadata-prompt (oxr-get-name-prefix 'figure)))
     (org-insert-link 'file image_file)))
 
+;;;###autoload
 (defun oxr-insert-section ()
   "Insert a new section headline, with name."
   (interactive)
@@ -165,6 +169,7 @@ grouping, and add the target type to the annotation instead."
    (string-join
     (seq-take (split-string str "[:;,.\s]" 'omit-nulls) 5) "-")))
 
+;;;###autoload
 (defun oxr-insert-name ()
   "Insert name for cross-referencing."
   (interactive)
