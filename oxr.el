@@ -18,7 +18,7 @@ grouping, and add the target type to the annotation instead."
   :type 'boolean)
 
 (defface oxr-target
-  '((t :foreground "wheat1"))
+  '((t :foreground "Lightblue"))
   "Face for oxr targets."
   :group 'oxr)
 
