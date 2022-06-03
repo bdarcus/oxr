@@ -17,6 +17,16 @@ grouping, and add the target type to the annotation instead."
   :group 'oxr
   :type 'boolean)
 
+(defcustom oxr-insert-ref-function #'oxr-insert-ref-internal
+  "Function to use for formatting ref links."
+  :group 'oxr
+  :type 'function)
+
+(defcustom oxr-create-table-function #'org-table-create
+  "Function to create an org table."
+  :group 'oxr
+  :type 'function)
+
 (defface oxr-target
   '((t :foreground "Lightblue"))
   "Face for oxr targets."
@@ -35,9 +45,6 @@ grouping, and add the target type to the annotation instead."
                     (table . "tab")
                     (section . "sec")))
 
-(defvar oxr-create-table-function 'org-table-create)
-(defvar oxr-insert-ref-function 'oxr--insert-ref-internal)
-
 ;;; cache
 
 (defvar-local oxr-targets (list))
@@ -50,13 +57,13 @@ grouping, and add the target type to the annotation instead."
   (interactive)
   (funcall oxr-insert-ref-function))
 
-(defun oxr--insert-ref-internal ()
+(defun oxr-insert-ref-internal ()
   "Insert cross-reference in buffer as internal link."
   (let* ((target (oxr-select-targets))
          (target-value (car target)))
     (org-insert-link 'internal target-value)))
 
-(defun oxr--insert-ref-typed ()
+(defun oxr-insert-ref-typed ()
   "Insert cross-reference in buffer as org-ref compatible typed link."
   (let ((type (completing-read "Cross-reference type: " oxr-types)))
     (let* ((target (oxr-select-targets type))
@@ -142,7 +149,7 @@ grouping, and add the target type to the annotation instead."
 (defun oxr-insert-table ()
   "Insert a new table, with name and caption."
   (interactive)
-  (insert (oxr-metadata-prompt (oxr-get-name-prefix 'table)))
+  (insert (oxr--metadata-prompt (oxr--get-name-prefix 'table)))
   (funcall oxr-create-table-function))
 
 ;;;###autoload
@@ -151,7 +158,7 @@ grouping, and add the target type to the annotation instead."
   (interactive)
   ;; TODO this inserts absolute paths ATM, which is not ideal.
   (let ((image_file (read-file-name "Image file: " "~/Pictures/")))
-    (insert (oxr-metadata-prompt (oxr-get-name-prefix 'figure)))
+    (insert (oxr--metadata-prompt (oxr--get-name-prefix 'figure)))
     (org-insert-link 'file image_file)))
 
 ;;;###autoload
@@ -176,15 +183,15 @@ grouping, and add the target type to the annotation instead."
   (let* ((object-type
           (completing-read "Object type: " oxr-types))
          (name (read-from-minibuffer "Name: ")))
-    (insert (concat (oxr-get-name-prefix object-type)) "-" name)))
+    (insert (concat (oxr--get-name-prefix object-type)) "-" name)))
 
-(defun oxr-metadata-prompt (name-prefix)
+(defun oxr--metadata-prompt (name-prefix)
   "Prompt user for name with NAME-PREFIX and caption."
   (let ((name (read-from-minibuffer "Name: "))
         (caption (read-from-minibuffer "Caption: ")))
     (concat "#+caption: " caption "\n#+name: " name-prefix "-" name "\n")))
 
-(defun oxr-get-name-prefix (type)
+(defun oxr--get-name-prefix (type)
   "Get the name prefix for TYPE from 'oxr-types'."
   (cdr (assoc type oxr-types)))
 
