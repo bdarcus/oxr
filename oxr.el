@@ -43,6 +43,7 @@ grouping, and add the target type to the annotation instead."
 ;; Should be easy enough to extend the list of types though.
 (defvar oxr-types '((figure . "fig")
                     (table . "tab")
+                    (equation . "eqn")
                     (section . "sec")))
 
 ;;; cache
@@ -70,6 +71,7 @@ grouping, and add the target type to the annotation instead."
           (link-type (pcase type
                        ("table" "tab")
                        ("figure" "fig")
+                       ("latex-environment" "eqn")
                        ("section" "sec")))
           (typed-target (concat link-type ":" target)))
       (org-insert-link 'typed typed-target typed-target))))
@@ -115,16 +117,18 @@ grouping, and add the target type to the annotation instead."
 (defun oxr-parse-targets (&optional _type)
   "Parse cross-reference targets from org buffer, optionally by TYPE."
   (let ((org-tree (org-element-parse-buffer)))
-    (org-element-map org-tree '(table link headline)
+    (org-element-map org-tree '(table link headline latex-environment)
       (lambda (target)
         (let* ((el-type (org-element-type target))
                (target-type (pcase el-type
                               ('table "table")
                               ('headline "section")
+                              ('latex-environment "equation")
                               (_ "figure")))
                (parent (car (cdr (org-element-property :parent target))))
                (name (pcase el-type
                        ('table (org-element-property :name target))
+                       ('latex-environment (org-element-property :name target))
                        ('headline (concat "#" (org-element-property :CUSTOM_ID target)))
                        (_ (plist-get parent :name))))
                (caption (oxr--extract-string
@@ -145,12 +149,38 @@ grouping, and add the target type to the annotation instead."
 
 ;;; Convenience functions for inserting new cross-reference targets (tables and figures)
 
+(defun oxr--metadata-prompt (name-prefix &optional properties)
+  "Prompt user for name with NAME-PREFIX and caption.
+If PROPERTIES, return formatted."
+  (let ((name (read-from-minibuffer "Name: "))
+        (caption (read-from-minibuffer "Caption: ")))
+    (if properties
+        (concat "#+caption: " caption "\n#+name: " name-prefix "-" name "\n")
+      (cons (concat name-prefix "-" name) caption))))
+
+(defun oxr--get-name-prefix (type)
+  "Get the name prefix for TYPE from 'oxr-types'."
+  (cdr (assoc type oxr-types)))
+
 ;;;###autoload
 (defun oxr-insert-table ()
   "Insert a new table, with name and caption."
   (interactive)
-  (insert (oxr--metadata-prompt (oxr--get-name-prefix 'table)))
+  (insert (oxr--metadata-prompt (oxr--get-name-prefix 'table) t))
   (funcall oxr-create-table-function))
+
+;;;###autoload
+(defun oxr-insert-equation ()
+  "Insert a new equation, with name and caption."
+  (interactive)
+  (let ((meta (oxr--metadata-prompt (oxr--get-name-prefix 'equation) t)))
+    (insert meta)
+    (insert "\\begin{equation}\n|\n")
+    (insert "\\end{equation}\n")
+    (search-backward "|")
+    (delete-char 1)
+    (when (fboundp 'evil-insert)
+      (evil-insert 1))))
 
 ;;;###autoload
 (defun oxr-insert-figure ()
@@ -158,7 +188,7 @@ grouping, and add the target type to the annotation instead."
   (interactive)
   ;; TODO this inserts absolute paths ATM, which is not ideal.
   (let ((image_file (read-file-name "Image file: " "~/Pictures/")))
-    (insert (oxr--metadata-prompt (oxr--get-name-prefix 'figure)))
+    (insert (oxr--metadata-prompt (oxr--get-name-prefix 'figure) t))
     (org-insert-link 'file image_file)))
 
 ;;;###autoload
@@ -184,16 +214,6 @@ grouping, and add the target type to the annotation instead."
           (completing-read "Object type: " oxr-types))
          (name (read-from-minibuffer "Name: ")))
     (insert (concat (oxr--get-name-prefix object-type)) "-" name)))
-
-(defun oxr--metadata-prompt (name-prefix)
-  "Prompt user for name with NAME-PREFIX and caption."
-  (let ((name (read-from-minibuffer "Name: "))
-        (caption (read-from-minibuffer "Caption: ")))
-    (concat "#+caption: " caption "\n#+name: " name-prefix "-" name "\n")))
-
-(defun oxr--get-name-prefix (type)
-  "Get the name prefix for TYPE from 'oxr-types'."
-  (cdr (assoc type oxr-types)))
 
 (provide 'oxr)
 ;;; oxr.el ends here
