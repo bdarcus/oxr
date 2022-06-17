@@ -43,6 +43,7 @@ grouping, and add the target type to the annotation instead."
 ;; Should be easy enough to extend the list of types though.
 (defvar oxr-types '((figure . "fig")
                     (table . "tab")
+                    (equation . "eqn")
                     (section . "sec")))
 
 ;;; cache
@@ -70,6 +71,7 @@ grouping, and add the target type to the annotation instead."
           (link-type (pcase type
                        ("table" "tab")
                        ("figure" "fig")
+                       ("latex-environment" "eqn")
                        ("section" "sec")))
           (typed-target (concat link-type ":" target)))
       (org-insert-link 'typed typed-target typed-target))))
@@ -115,16 +117,18 @@ grouping, and add the target type to the annotation instead."
 (defun oxr-parse-targets (&optional _type)
   "Parse cross-reference targets from org buffer, optionally by TYPE."
   (let ((org-tree (org-element-parse-buffer)))
-    (org-element-map org-tree '(table link headline)
+    (org-element-map org-tree '(table link headline latex-environment)
       (lambda (target)
         (let* ((el-type (org-element-type target))
                (target-type (pcase el-type
                               ('table "table")
                               ('headline "section")
+                              ('latex-environment "equation")
                               (_ "figure")))
                (parent (car (cdr (org-element-property :parent target))))
                (name (pcase el-type
                        ('table (org-element-property :name target))
+                       ('latex-environment (org-element-property :name target))
                        ('headline (concat "#" (org-element-property :CUSTOM_ID target)))
                        (_ (plist-get parent :name))))
                (caption (oxr--extract-string
@@ -151,6 +155,18 @@ grouping, and add the target type to the annotation instead."
   (interactive)
   (insert (oxr--metadata-prompt (oxr--get-name-prefix 'table)))
   (funcall oxr-create-table-function))
+
+;;;###autoload
+(defun oxr-insert-equation ()
+  "Insert a new equation, with name and caption."
+  (interactive)
+  (insert (oxr--metadata-prompt (oxr--get-name-prefix 'table)))
+  (insert "\\begin{equation}\n|\n")
+  (insert "\\end{equation}\n")
+  (search-backward "|")
+  (delete-char 1)
+  (when (fboundp 'evil-insert)
+    (evil-insert 1)))
 
 ;;;###autoload
 (defun oxr-insert-figure ()
