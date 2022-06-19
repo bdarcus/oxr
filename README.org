@@ -1,14 +1,32 @@
 #+TITLE: OXR (Org Experimental Cross-References)
 
+* Introduction
+
 This is an experiment to see what a minimal package to enhance cross-references in org-mode might look like, that might at some point contribute pieces to org.
 
 The general idea is to start with just using internal links, with =cleveref= as output target in LaTeX.
+
+* Features
+
+This package currently supports the following cross-reference target types:
+- sections
+- figures
+- tables
+- equations
+... and the =oxr-insert-ref= command to insert cross-references to those targets.
+
+It also includes the following convenience commands to make it easy to create cross-reference targets that =oxr-insert-ref= can recognize.
+- =oxr-insert-section=
+- =oxr-insert-figure=
+- =oxr-insert-table=
+- =oxr-insert-equation=
+
+Finally, =oxr= can also access targets from included files.
+
+* Screenshot
 
 Figure [[fig-insert-screen]] is a simple screenshot showing the group-based insertion UI.
 
 #+caption: Group-based target insertion.
 #+name: fig-insert-screen
 [[./images/oxr-insert.png]]
-
-I started this before John Kitchin posted a similar, much more complete, example in the form of [[https://github.com/jkitchin/org-ref/blob/master/org-ref-refproc.el][refproc]].
-That, however, is currently included in the much larger org-ref package.
