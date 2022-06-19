@@ -67,13 +67,13 @@ grouping, and add the target type to the annotation instead."
 (defun oxr-insert-ref-typed ()
   "Insert cross-reference in buffer as org-ref compatible typed link."
   (let ((type (completing-read "Cross-reference type: " oxr-types)))
-    (let* ((target (oxr-select-targets type))
-          (link-type (pcase type
-                       ("table" "tab")
-                       ("figure" "fig")
-                       ("latex-environment" "eqn")
-                       ("section" "sec")))
-          (typed-target (concat link-type ":" target)))
+    (let* ((target (oxr-select-targets))
+           (link-type (pcase type
+                        ("table" "tab")
+                        ("figure" "fig")
+                        ("latex-environment" "eqn")
+                        ("section" "sec")))
+           (typed-target (concat link-type ":" target)))
       (org-insert-link 'typed typed-target typed-target))))
 
 (defun oxr-insert-annotate (target)
@@ -88,9 +88,9 @@ grouping, and add the target type to the annotation instead."
   "Function to group or TRANSFORM cross-reference candidates by TARGET type."
   (if transform target (get-text-property 0 'oxr--type target)))
 
-(defun oxr-select-targets (&optional type)
-  "Select cross-reference target for TYPE."
-  (let* ((targets (oxr-parse-targets type))
+(defun oxr-select-targets ()
+  "Select cross-reference target."
+  (let* ((targets (oxr--make-candidates))
          (choice
           (if targets
               (completing-read
@@ -114,29 +114,77 @@ grouping, and add the target type to the annotation instead."
     (setq thing (car thing)))
   (substring-no-properties thing))
 
-(defun oxr-parse-targets (&optional _type)
-  "Parse cross-reference targets from org buffer, optionally by TYPE."
-  (let ((org-tree (org-element-parse-buffer)))
-    (org-element-map org-tree '(table link headline latex-environment)
-      (lambda (target)
-        (let* ((el-type (org-element-type target))
-               (target-type (pcase el-type
-                              ('table "table")
-                              ('headline "section")
-                              ('latex-environment "equation")
-                              (_ "figure")))
-               (parent (car (cdr (org-element-property :parent target))))
-               (name (pcase el-type
-                       ('table (org-element-property :name target))
-                       ('latex-environment (org-element-property :name target))
-                       ('headline (concat "#" (org-element-property :CUSTOM_ID target)))
-                       (_ (plist-get parent :name))))
-               (caption (oxr--extract-string
-                         (or (org-element-property :caption target)
-                             (org-element-property :raw-value target)
-                             (plist-get parent :caption)
-                             ""))))
-          (when name (oxr--make-candidate name caption target-type)))))))
+(defvar-local oxr--target-cache (make-hash-table :test 'equal))
+
+(defun oxr--parse-includes (org-tree)
+  "Extract include filepaths from ORG-TREE."
+  (let ((results (list)))
+    (org-element-map org-tree 'keyword
+      (lambda (kwd)
+        (when (string= "INCLUDE"
+                       (org-element-property :key kwd))
+          (push (org-element-property :value kwd) results))))
+    (when results results)))
+
+(defun oxr--parse-buffers ()
+  "Parse current buffer, as well as included files."
+  (let* ((org-tree (org-element-parse-buffer))
+         (includes (mapcar
+                    (lambda (file)
+                      (oxr--parse-file file))
+                    (oxr--parse-includes org-tree))))
+    (clrhash oxr--target-cache)
+    (oxr--parse-targets org-tree)
+    (when includes
+      (dolist (otree includes)
+        ;; FIX why doesn't this work?
+        (oxr--parse-targets otree)))))
+
+(defun oxr--parse-file (file)
+  "Parse FILE, return parse tree."
+  (with-temp-buffer
+    (insert-file-contents file)
+    (set-buffer-modified-p nil)
+    (org-with-wide-buffer
+     (org-element-parse-buffer))))
+
+(defun oxr--parse-targets (org-tree)
+  "Parse cross-reference targets from ORG-TREE."
+  (org-element-map org-tree '(table link headline latex-environment)
+    (lambda (target)
+      (let* ((el-type (org-element-type target))
+             (target-type (pcase el-type
+                            ('table "table")
+                            ('headline "section")
+                            ('latex-environment "equation")
+                            (_ "figure")))
+             (parent (car (cdr (org-element-property :parent target))))
+             (name (pcase el-type
+                     ('table (org-element-property :name target))
+                     ('latex-environment (org-element-property :name target))
+                     ('headline
+                      (concat "#" (org-element-property :CUSTOM_ID target)))
+                     (_ (plist-get parent :name))))
+             (caption (oxr--extract-string
+                       (or (org-element-property :caption target)
+                           (org-element-property :raw-value target)
+                           (plist-get parent :caption)
+                           ""))))
+        (when (and name (not (string= name "#")))
+          (puthash name (cons target-type caption) oxr--target-cache))))))
+                                        ; (oxr--make-candidate name caption target-type))))))
+
+(defun oxr--make-candidates ()
+  "Return completion candidates."
+  (let ((results (list)))
+    (oxr--parse-buffers)
+    (maphash
+     (lambda (key value)
+       (push
+        (oxr--make-candidate key (cdr value) (car value))
+        results))
+     oxr--target-cache)
+  results))
 
 (defun oxr--make-candidate (name caption type)
   "Make candidate string with NAME, CAPTION, TYPE."
