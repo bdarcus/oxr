@@ -21,7 +21,7 @@ It also includes the following convenience commands to make it easy to create cr
 - =oxr-insert-table=
 - =oxr-insert-equation=
 
-Finally, =oxr= can also access targets from included files.
+Finally, =oxr= can also access targets from included files (though this is currently limited and needs work).
 
 * Screenshot
 
